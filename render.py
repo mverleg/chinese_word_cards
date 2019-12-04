@@ -1,4 +1,108 @@
 from sys import argv
+from typing import List
+
+
+class Word:
+    def __init__(self, chars, pinyin):
+        self.chars = chars
+        self.pinyin = pinyin
+
+    def __repr__(self):
+        return self.chars
+
+
+def read_words(filename: str) -> List[Word]:
+    words = []
+    with open(filename, 'r') as fh:
+        lines = fh.read().splitlines()
+    for line in lines:
+        if not line.strip() or ';' not in line:
+            continue
+        chars, pinyin = line.split(';', maxsplit=2)
+        words.append(Word(chars.strip(), pinyin.strip()))
+    return words
+
+
+def collect_pages(words: List[Word]) -> List[List[List[Word]]]:
+    pages = []
+    current_cards = []
+    current_words = []
+    for word in words:
+        current_words.append(word)
+        if len(current_words) >= 8:
+            current_cards.append(current_words)
+            current_words = []
+            if len(current_cards) >= 9:
+                pages.append(current_cards)
+                current_cards = []
+    return pages
+
+
+def to_html_cards(pages: List[List[List[Word]]]) -> str:
+    html = [
+        '<!DOCTYPE html><html><head>',
+        '<title>Chinese cards</title>',
+        '<style>',
+        '''@page {
+           size: A4 portrait;
+           margin: 0;
+           font-size: 50%;
+        }
+        main {
+            width: 8.2in;
+            margin: 0 auto;
+        }
+        .page {
+           page-break-after: always;
+           display: flex;
+           flex-direction: row;
+           flex-wrap: wrap;
+        }
+        .card {
+           border: 1px solid black;
+           flex-basis: 30%;
+           flex-grow: 1;
+           text-align: center;
+           margin: 1em;
+           padding: 2em 0;
+           display: flex;
+        }
+        .column {
+            flex: 50%;
+        }
+        .word {
+           margin-bottom: 2em;
+        }
+        .word:last-child {
+            margin-bottom: 0;
+        }
+        .word h1, .word p {
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        ''',
+        '</style>',
+        '</head><body><main>',
+    ]
+    for page in pages:
+        html.append("<div class='page'>")
+        for card in page:
+            html.append("<article class='card'>")
+            cols = [
+                ["<div class='column column1'>"],
+                ["<div class='column column2'>"]]
+            for k, word in enumerate(card):
+                cols[k % len(cols)].append("<div class='word'>")
+                cols[k % len(cols)].append("<h1 id='chars'>{}</h1>".format(word.chars))
+                cols[k % len(cols)].append("<p id='pinyin'>{}</p>".format(word.pinyin))
+                cols[k % len(cols)].append("</div>")
+            for col in cols:
+                html.extend(col)
+                html.append('</div>')
+            html.append("</article>")
+        html.append("</div>")
+    html.append("</main></body></html>")
+    return '\n'.join(html)
 
 
 def main(args):
@@ -11,22 +115,14 @@ def main(args):
         raise Exception("provide either 'pinyin' or 'nopinyin' as argument")
     with open('words.csv', 'r') as fh:
         lines = fh.read().splitlines()
-    html = ["<!DOCTYPE html><html><body>"]
-    pages = []
-    current_cards = []
-    current_words = []
-    for line in lines:
-        if ';' not in line:
-            continue
-        current_words.append(line)
-        if len(current_words) >= 6:
-            current_cards.append(current_words)
-            current_words = []
-            if len(current_cards) >= 9:
-                pages.append(current_cards)
-                current_cards = []
-    print(pages)
-    html.append("</body></html>")
+    words = read_words('words.csv')
+    pages = collect_pages(words)
+    html = to_html_cards(pages)
+    #outfile = mkstemp(suffix='.html')[1]
+    outfile = '/tmp/chinese-cards.html'
+    print(outfile)
+    with open(outfile, 'w+') as fh:
+        fh.write(html)
 
 
 if __name__ == '__main__':
