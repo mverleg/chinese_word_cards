@@ -23,22 +23,26 @@ def read_words(filename: str) -> List[Word]:
     return words
 
 
-def collect_pages(words: List[Word]) -> List[List[List[Word]]]:
+def collect_pages(words: List[Word], word_per_card=8, card_per_row=3, row_per_page=4) -> List[List[List[List[Word]]]]:
     pages = []
+    current_row = []
     current_cards = []
     current_words = []
     for word in words:
         current_words.append(word)
-        if len(current_words) >= 8:
+        if len(current_words) >= word_per_card:
             current_cards.append(current_words)
             current_words = []
-            if len(current_cards) >= 9:
-                pages.append(current_cards)
+            if len(current_cards) >= card_per_row:
+                current_row.append(current_cards)
                 current_cards = []
+                if len(current_row) >= row_per_page:
+                    pages.append(current_row)
+                    current_row = []
     return pages
 
 
-def to_html_cards(pages: List[List[List[Word]]]) -> str:
+def to_html_cards(pages: List[List[List[List[Word]]]]) -> str:
     html = [
         '<!DOCTYPE html><html><head>',
         '<title>Chinese cards</title>',
@@ -46,26 +50,28 @@ def to_html_cards(pages: List[List[List[Word]]]) -> str:
         '''@page {
            size: A4 portrait;
            margin: 0;
-           font-size: 50%;
         }
         main {
+            font-size: 60%;
             width: 8.2in;
             margin: 0 auto;
         }
         .page {
-           page-break-after: always;
-           display: flex;
-           flex-direction: row;
-           flex-wrap: wrap;
+            page-break-after: always;
+        }
+        .row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
         }
         .card {
-           border: 1px solid black;
-           flex-basis: 30%;
-           flex-grow: 1;
-           text-align: center;
-           margin: 1em;
-           padding: 2em 0;
-           display: flex;
+            border: 1px solid black;
+            flex-basis: 30%;
+            flex-grow: 1;
+            text-align: center;
+            margin: 1em;
+            padding: 2em 0;
+            display: flex;
         }
         .column {
             flex: 50%;
@@ -85,22 +91,24 @@ def to_html_cards(pages: List[List[List[Word]]]) -> str:
         '</head><body><main>',
     ]
     for page in pages:
-        html.append("<div class='page'>")
-        for card in page:
-            html.append("<article class='card'>")
-            cols = [
-                ["<div class='column column1'>"],
-                ["<div class='column column2'>"]]
-            for k, word in enumerate(card):
-                cols[k % len(cols)].append("<div class='word'>")
-                cols[k % len(cols)].append("<h1 id='chars'>{}</h1>".format(word.chars))
-                cols[k % len(cols)].append("<p id='pinyin'>{}</p>".format(word.pinyin))
-                cols[k % len(cols)].append("</div>")
-            for col in cols:
-                html.extend(col)
-                html.append('</div>')
-            html.append("</article>")
-        html.append("</div>")
+        for row in page:
+            html.append("<div class='row'>")
+            for card in row:
+                html.append("<article class='card'>")
+                cols = [
+                    ["<div class='column column1'>"],
+                    ["<div class='column column2'>"]]
+                for k, word in enumerate(card):
+                    cols[k % len(cols)].append("<div class='word'>")
+                    cols[k % len(cols)].append("<h1 id='chars'>{}</h1>".format(word.chars))
+                    cols[k % len(cols)].append("<p id='pinyin'>{}</p>".format(word.pinyin))
+                    cols[k % len(cols)].append("</div>")
+                for col in cols:
+                    html.extend(col)
+                    html.append('</div>')
+                html.append("</article>")
+            html.append("</div>")
+            html.append("<div class='page'>&nbsp;</div>")
     html.append("</main></body></html>")
     return '\n'.join(html)
 
