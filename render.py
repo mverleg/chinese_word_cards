@@ -8,7 +8,7 @@ class Word:
         self.pinyin = pinyin
 
     def __repr__(self):
-        return self.chars
+        return '"{}"'.format(self.chars)
 
 
 def read_words(filename: str) -> List[Word]:
@@ -58,6 +58,7 @@ def to_html_cards(pages: List[List[List[List[Word]]]]) -> str:
         }
         .page {
             page-break-after: always;
+            height: 5em;
         }
         .row {
             display: flex;
@@ -86,6 +87,9 @@ def to_html_cards(pages: List[List[List[List[Word]]]]) -> str:
             margin-bottom: 0;
             margin-top: 0;
         }
+        .pinyin {
+            visibility: hidden;
+        }
         ''',
         '</style>',
         '</head><body><main>',
@@ -100,15 +104,15 @@ def to_html_cards(pages: List[List[List[List[Word]]]]) -> str:
                     ["<div class='column column2'>"]]
                 for k, word in enumerate(card):
                     cols[k % len(cols)].append("<div class='word'>")
-                    cols[k % len(cols)].append("<h1 id='chars'>{}</h1>".format(word.chars))
-                    cols[k % len(cols)].append("<p id='pinyin'>{}</p>".format(word.pinyin))
+                    cols[k % len(cols)].append("<h1 class='chars'>{}</h1>".format(word.chars))
+                    cols[k % len(cols)].append("<p class='pinyin'>{}</p>".format(word.pinyin))
                     cols[k % len(cols)].append("</div>")
                 for col in cols:
                     html.extend(col)
                     html.append('</div>')
                 html.append("</article>")
             html.append("</div>")
-            html.append("<div class='page'>&nbsp;</div>")
+        html.append("<div class='page'>&nbsp;</div>")
     html.append("</main></body></html>")
     return '\n'.join(html)
 
@@ -125,6 +129,7 @@ def main(args):
         lines = fh.read().splitlines()
     words = read_words('words.csv')
     pages = collect_pages(words)
+    print(pages)
     html = to_html_cards(pages)
     #outfile = mkstemp(suffix='.html')[1]
     outfile = '/tmp/chinese-cards.html'
